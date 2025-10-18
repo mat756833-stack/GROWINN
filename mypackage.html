@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Package</title>
+  <style>
+    body{font-family:"Segoe UI";background:#f9f9f9;padding:20px;}
+    .box{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+  </style>
+</head>
+<body>
+  <h2>📦 My Package</h2>
+  <div id="packageBox">Loading...</div>
+
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+    import { collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+    const packageBox = document.getElementById("packageBox");
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href="login.html"; return; }
+
+      const q = query(collection(db, "paymentRequests"), where("uid","==",user.uid), where("status","==","approved"));
+      const snap = await getDocs(q);
+
+      if(snap.empty){ packageBox.innerHTML = "❌ এখনো কোনো active package নেই।"; return; }
+
+      packageBox.innerHTML = "";
+      snap.forEach(async (d)=>{
+        const data = d.data();
+        const today = new Date().toDateString();
+
+        if(data.lastProfitUpdate !== today){
+          const newTotal = (data.totalProfit || 0) + (data.dailyProfit || 0);
+          await updateDoc(doc(db,"paymentRequests",d.id),{
+            totalProfit: newTotal,
+            lastProfitUpdate: today
+          });
+          data.totalProfit = newTotal;
+          data.lastProfitUpdate = today;
+        }
+
+        packageBox.innerHTML += `
+          <div class="box">
+            <b>${data.plan}</b><br>
+            📅 সর্বশেষ আপডেট: ${data.lastProfitUpdate}<br>
+            💰 দৈনিক প্রফিট: ${data.dailyProfit} ৳<br>
+            🧮 মোট প্রফিট: ${data.totalProfit} ৳
+          </div>
+        `;
+      });
+    });
+  </script>
+</body>
+</html>

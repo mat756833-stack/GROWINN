@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<style>
+body {
+  font-family:"Segoe UI", sans-serif;
+  background:#f0f0f0;
+  margin:0; padding:0;
+}
+
+/* HEADER */
+.header {
+  position: relative;
+  color: white;
+  text-align: center;
+  padding: 40px 10px;
+  background: url('header-bg.png') no-repeat center/cover;
+  background-size: cover;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  border-bottom: 3px solid #0072ff;
+}
+.header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+.header-content { position: relative; z-index: 2; }
+.header h2 { font-size:20px; margin:6px 0; text-shadow:1px 1px 6px rgba(0,0,0,0.4);}
+.header p { margin:4px 0; font-size:15px; text-shadow:1px 1px 5px rgba(0,0,0,0.4);}
+
+/* NOTICE */
+.notice {
+  max-width:900px;
+  margin:20px auto;
+  padding:20px;
+  border-radius:12px;
+  background: linear-gradient(135deg, #ff6ec7, #6a11cb, #ff9a00);
+  color:white;
+  font-weight:600;
+  font-size:16px;
+  text-align:center;
+  box-shadow:0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* PACKAGE BOX */
+.package-box {
+  max-width:400px;
+  margin:20px auto;
+  padding:20px;
+  border-radius:12px;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  color:white;
+  font-weight:700;
+  font-size:18px;
+  text-align:center;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  cursor:pointer;
+}
+
+/* INVESTMENT GRID */
+.invest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 0 10px;
+}
+
+.invest-option {
+  background:#fff;
+  padding:18px;
+  display:flex;
+  flex-direction: column;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.2);
+  text-align:center;
+  transition: transform .2s;
+  cursor:pointer;
+  color:white;
+  font-weight:bold;
+  background-size: cover;
+  background-position: center;
+  min-height:180px;
+}
+.invest-option:hover { transform: scale(1.05); }
+
+/* Overlay text background dark for readability */
+.invest-option h3,
+.invest-option p {
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+  margin:2px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-content">
+    <p>Total Invest: <b>40000 BDT</b></p>
+    <h2>GROWINN INVEST BD NATIONAL</h2>
+    <p>People: <b>30k+</b></p>
+  </div>
+</div>
+
+<!-- NOTICE -->
+<div class="notice">
+  আমাদের সাথে ব্যবসার শেয়ার আপনি নিতে পারেন। <br>
+  আগামী 5 বছর আমাদের ইনভেস্ট এইভাবে চলবে। <br>
+  আরো ভালো কোনো আপডেট ইনভেস্ট এর সুযোগ পেলে আপনাদের সাথেই এগিয়ে যাবো।
+</div>
+
+<!-- MY PACKAGE -->
+<div id="myPackage" class="package-box">
+  My প্যাকেজ
+</div>
+
+<!-- INVESTMENT OPTIONS GRID -->
+<div class="invest-grid">
+  <div class="invest-option" id="oilBtn" style="background-image: url('oil.jpeg');">
+    <h3>Invest of Oil</h3>
+    <p>আমাদের অংশীদার হয়ে কাজ করুন</p>
+  </div>
+
+  <div class="invest-option" id="saltBtn" style="background-image: url('salt.jpeg');">
+    <h3>Invest of Salt</h3>
+    <p>আমাদের অংশীদার হয়ে কাজ করুন</p>
+  </div>
+
+  <div class="invest-option" id="sugarBtn" style="background-image: url('sugar.jpeg');">
+    <h3>Invest of Sugar Mill</h3>
+    <p>আমাদের অংশীদার হয়ে কাজ করুন</p>
+  </div>
+
+  <div class="invest-option" id="fishBtn" style="background-image: url('fish.jpeg');">
+    <h3>Invest of The Fish Business</h3>
+    <p>আমাদের অংশীদার হয়ে কাজ করুন</p>
+  </div>
+</div>
+
+<!-- SCRIPT -->
+<script type="module">
+import { auth } from './firebase.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+// Firebase login check
+onAuthStateChanged(auth, (user) => {
+  if(!user){
+    window.location.href = "login.html";
+  }
+});
+
+// DOM load হওয়ার পরে সব বাটন attach
+window.addEventListener("DOMContentLoaded", () => {
+  // My Package
+  const myPackageBtn = document.getElementById("myPackage");
+  if(myPackageBtn){
+    myPackageBtn.addEventListener("click", ()=>{
+      window.location.href = "mypackage.html";
+    });
+  }
+
+  // Investment Buttons
+  const btns = [
+    {id:"oilBtn", page:"oil.html"},
+    {id:"saltBtn", page:"salt.html"},
+    {id:"sugarBtn", page:"sugar.html"},
+    {id:"fishBtn", page:"fish.html"}
+  ];
+
+  btns.forEach(b => {
+    const el = document.getElementById(b.id);
+    if(el){
+      el.addEventListener("click", ()=>{ window.location.href = b.page; });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
