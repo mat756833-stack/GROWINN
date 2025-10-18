@@ -29,37 +29,37 @@ button:hover { transform:scale(1.05); background:#111; }
     <div class="card">
       <h3>প্ল্যান 1: 1000 টাকা</h3>
       <p>1000 টাকা ইনভেস্ট করে প্রতিদিন 75 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil1000.html')">Invest Now</button>
+      <button data-page="oil1000.html">Invest Now</button>
     </div>
 
     <div class="card">
       <h3>প্ল্যান 2: 2000 টাকা</h3>
       <p>2000 টাকা ইনভেস্ট করে প্রতিদিন 150 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil2000.html')">Invest Now</button>
+      <button data-page="oil2000.html">Invest Now</button>
     </div>
 
     <div class="card">
       <h3>প্ল্যান 3: 3000 টাকা</h3>
       <p>3000 টাকা ইনভেস্ট করে প্রতিদিন 225 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil3000.html')">Invest Now</button>
+      <button data-page="oil3000.html">Invest Now</button>
     </div>
 
     <div class="card">
       <h3>প্ল্যান 4: 4000 টাকা</h3>
       <p>4000 টাকা ইনভেস্ট করে প্রতিদিন 300 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil4000.html')">Invest Now</button>
+      <button data-page="oil4000.html">Invest Now</button>
     </div>
 
     <div class="card">
       <h3>প্ল্যান 5: 5000 টাকা</h3>
       <p>5000 টাকা ইনভেস্ট করে প্রতিদিন 375 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil5000.html')">Invest Now</button>
+      <button data-page="oil5000.html">Invest Now</button>
     </div>
 
     <div class="card">
       <h3>প্ল্যান 6: 10000 টাকা</h3>
       <p>10000 টাকা ইনভেস্ট করে প্রতিদিন 750 টাকা মুনাফা অর্জন করুন</p>
-      <button onclick="goToPage('oil10000.html')">Invest Now</button>
+      <button data-page="oil10000.html">Invest Now</button>
     </div>
   </div>
 
@@ -78,10 +78,13 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// Function to navigate pages
-function goToPage(page) {
-  window.location.href = page;
-}
+// Invest Now বাটনগুলো কাজ করার জন্য
+document.querySelectorAll('.packages button').forEach(button => {
+  button.addEventListener('click', () => {
+    const page = button.getAttribute('data-page');
+    window.location.href = page;
+  });
+});
 </script>
 
 </body>
