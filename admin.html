@@ -19,19 +19,19 @@ button:hover { opacity:0.8; }
 <body>
 
 <div class="container">
-  <h2>Admin Panel - Approve / Reject Investments</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>User ID</th>
-        <th>Plan</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="investmentTable"></tbody>
-  </table>
+  <h2>Admin Panel - Approve / Reject Investments</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>User ID</th>
+        <th>Plan</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="investmentTable"></tbody>
+  </table>
 </div>
 
 <script type="module">
@@ -39,56 +39,63 @@ import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 import { collection, getDocs, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-// শুধুমাত্র এই UID কে admin হিসেবে অনুমোদন
+// তুমি যেই UID দিয়েছো সেটা admin
 const ADMIN_UID = "CJnhXotCpzbauGdfmlSufTKGGPw2";
 
+// Auth check
 onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    window.location.href = "login.html";
-  } else if(user.uid !== ADMIN_UID){  
-    alert("আপনার অ্যাক্সেস নেই!");
-    window.location.href = "dashboard.html";
-  } else {
-    loadInvestments();
-  }
+  if(!user){
+    // কেউ লগইন না করলে login page-এ পাঠাও
+    window.location.href = "login.html";
+    return;
+  }
+
+  if(user.uid !== ADMIN_UID){
+    alert("আপনার অ্যাক্সেস নেই!");
+    window.location.href = "dashboard.html"; // অন্যরা এখানে যাবে
+    return;
+  }
+
+  // Admin হলে pending investments লোড করো
+  loadInvestments();
 });
 
-// Pending investments লোড
 async function loadInvestments(){
-  const table = document.getElementById('investmentTable');
-  table.innerHTML = "";
-  const q = query(collection(db, "investments"), where("status", "==", "pending"));
-  const querySnapshot = await getDocs(q);
+  const table = document.getElementById('investmentTable');
+  table.innerHTML = "";
+  const q = query(collection(db, "investments"), where("status", "==", "pending"));
+  const querySnapshot = await getDocs(q);
 
-  querySnapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${data.userId}</td>
-      <td>${data.plan}</td>
-      <td>${data.amount}</td>
-      <td>${data.status}</td>
-      <td>
-        <button class="approve">Approve</button>
-        <button class="reject">Reject</button>
-      </td>
-    `;
-    table.appendChild(row);
+  querySnapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${data.userId}</td>
+      <td>${data.plan}</td>
+      <td>${data.amount}</td>
+      <td>${data.status}</td>
+      <td>
+        <button class="approve">Approve</button>
+        <button class="reject">Reject</button>
+      </td>
+    `;
+    table.appendChild(row);
 
-    // Approve button
-    row.querySelector(".approve").addEventListener("click", async () => {
-      await updateDoc(doc(db, "investments", docSnap.id), {status: "approved"});
-      row.remove();
-    });
+    // Approve button
+    row.querySelector(".approve").addEventListener("click", async () => {
+      await updateDoc(doc(db, "investments", docSnap.id), {status: "approved"});
+      row.remove();
+    });
 
-    // Reject button
-    row.querySelector(".reject").addEventListener("click", async () => {
-      await updateDoc(doc(db, "investments", docSnap.id), {status: "rejected"});
-      row.remove();
-    });
-  });
+    // Reject button
+    row.querySelector(".reject").addEventListener("click", async () => {
+      await updateDoc(doc(db, "investments", docSnap.id), {status: "rejected"});
+      row.remove();
+    });
+  });
 }
 </script>
 
 </body>
 </html>
+
