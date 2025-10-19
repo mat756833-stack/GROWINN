@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -6,97 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel</title>
 <style>
-body { font-family:"Segoe UI"; margin:0; padding:0; background:#f0f0f0; }
-.container { max-width:900px; margin:50px auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
-h2 { text-align:center; margin-bottom:30px; }
-table { width:100%; border-collapse:collapse; }
-th, td { padding:12px; border-bottom:1px solid #ddd; text-align:center; }
-button { padding:8px 15px; border:none; border-radius:6px; cursor:pointer; transition:0.3s; }
-.approve { background:green; color:white; }
-.reject { background:red; color:white; }
-button:hover { opacity:0.8; }
+body { font-family:"Segoe UI"; background:#f0f2f5; margin:0; padding:20px; }
+header { background:#111; color:white; padding:15px; text-align:center; border-radius:10px; margin-bottom:20px; }
+.container { max-width:1000px; margin:auto; }
+.card { background:white; padding:15px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:15px; }
+button { padding:5px 12px; margin:3px; border:none; border-radius:8px; cursor:pointer; transition:0.3s; }
+.approve { background:#28a745; color:white; }
+.approve:hover { background:#1e7e34; }
+.reject { background:#dc3545; color:white; }
+.reject:hover { background:#a71d2a; }
+.logout { padding:8px 15px; border:none; border-radius:8px; cursor:pointer; background:#ff6ec7; color:white; float:right; }
 </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>Admin Panel - Approve / Reject Investments</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>User ID</th>
-        <th>Plan</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="investmentTable"></tbody>
-  </table>
+<header>
+  <h2>🛠 Admin Panel</h2>
+  <button class="logout" onclick="logout()">Logout</button>
+</header>
+
+<div class="container" id="adminContent">
+  Loading payment requests...
 </div>
 
 <script type="module">
 import { auth, db } from './firebase.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { collection, getDocs, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { collection, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-// তুমি যেই UID দিয়েছো সেটা admin
-const ADMIN_UID = "CJnhXotCpzbauGdfmlSufTKGGPw2";
+const adminContent = document.getElementById("adminContent");
 
-// Auth check
-onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    // কেউ লগইন না করলে login page-এ পাঠাও
-    window.location.href = "login.html";
-    return;
-  }
-
-  if(user.uid !== ADMIN_UID){
-    alert("আপনার অ্যাক্সেস নেই!");
-    window.location.href = "dashboard.html"; // অন্যরা এখানে যাবে
-    return;
-  }
-
-  // Admin হলে pending investments লোড করো
-  loadInvestments();
-});
-
-async function loadInvestments(){
-  const table = document.getElementById('investmentTable');
-  table.innerHTML = "";
-  const q = query(collection(db, "investments"), where("status", "==", "pending"));
-  const querySnapshot = await getDocs(q);
-
-  querySnapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${data.userId}</td>
-      <td>${data.plan}</td>
-      <td>${data.amount}</td>
-      <td>${data.status}</td>
-      <td>
-        <button class="approve">Approve</button>
-        <button class="reject">Reject</button>
-      </td>
-    `;
-    table.appendChild(row);
-
-    // Approve button
-    row.querySelector(".approve").addEventListener("click", async () => {
-      await updateDoc(doc(db, "investments", docSnap.id), {status: "approved"});
-      row.remove();
-    });
-
-    // Reject button
-    row.querySelector(".reject").addEventListener("click", async () => {
-      await updateDoc(doc(db, "investments", docSnap.id), {status: "rejected"});
-      row.remove();
-    });
-  });
+function logout(){
+  signOut(auth).then(()=>window.location.href="login.html");
 }
-</script>
 
+// Update payment status
+window.updateStatus = async function(docId, status){
+  try{
+    const docRef = doc(db, "paymentRequests", docId);
+    await updateDoc(docRef, { status: status });
+    alert(`✅ Status updated to ${status}`);
+  } catch(e){
+    alert("❌ Error: " + e.message);
+  }
+}
+
+// Load payment requests realtime
+function loadPaymentRequestsRealtime(){
+  const qPayments = collection(db, "paymentRequests");
+  onSnapshot(qPayments, (snapshot) => {
+    adminContent.innerHTML = "";
+    if(snapshot.empty){
+      adminContent.innerHTML = "<p>কোনো payment request নেই।</p>";
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+      adminContent.innerHTML += `
+        <div class="card">
+          <b>${data.plan}</b><br>
+          UID: ${data.uid}<br>
+          Amount: ${data.amount} ৳<br>
+          Status: <b>${data.status}</b><br>
+          Screenshot: ${data.screenshot ? `<a href="${data.screenshot}" target="_blank">View</a>` : "No screenshot"}<br>
+          <button class="approve" onclick="updateStatus('${id}','approved')">Approve</button>
+          <button class="reject" onclick="updateStatus('${id}','rejected')">Reject</button>
+        </div>
+      `;
+    });
+  });
+}
+
+// Admin login verification
+onAuthStateChanged(auth, (user) => {
+  if(!user) return window.location.href="login.html";
+
+  const adminUIDs = ["YOUR_ADMIN_UID_HERE"]; // এখানে তোমার Firebase admin UID বসাও
+  if(!adminUIDs.includes(user.uid)){
+    alert("Unauthorized — আপনি অ্যাডমিন নন");
+    return window.location.href="dashboard.html";
+  }
+
+  // Admin confirmed → Load requests realtime
+  loadPaymentRequestsRealtime();
+});
+</script>
 </body>
 </html>
-
