@@ -31,10 +31,11 @@ button { padding:5px 12px; margin:3px; border:none; border-radius:8px; cursor:po
 <script type="module">
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { collection, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { collection, doc, updateDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 const adminContent = document.getElementById("adminContent");
 
+// Logout function
 function logout(){
   signOut(auth).then(()=>window.location.href="login.html");
 }
@@ -78,18 +79,23 @@ function loadPaymentRequestsRealtime(){
   });
 }
 
-// Admin login verification
-onAuthStateChanged(auth, (user) => {
+// Admin verification using Firestore collection
+onAuthStateChanged(auth, async (user) => {
   if(!user) return window.location.href="login.html";
 
-  const adminUIDs = ["YOUR_ADMIN_UID_HERE"]; // এখানে তোমার Firebase admin UID বসাও
-  if(!adminUIDs.includes(user.uid)){
-    alert("Unauthorized — আপনি অ্যাডমিন নন");
+  try{
+    const adminDoc = await getDoc(doc(db, "admins", user.uid));
+    if(!adminDoc.exists()){
+      alert("Unauthorized — আপনি অ্যাডমিন নন");
+      return window.location.href="dashboard.html";
+    }
+
+    // Admin confirmed → Load requests realtime
+    loadPaymentRequestsRealtime();
+  } catch(e){
+    alert("❌ Error checking admin: " + e.message);
     return window.location.href="dashboard.html";
   }
-
-  // Admin confirmed → Load requests realtime
-  loadPaymentRequestsRealtime();
 });
 </script>
 </body>
