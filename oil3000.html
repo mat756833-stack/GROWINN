@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plans</title>
+  <title>Oil Plan 3 - 3000 টাকা</title>
   <style>
     body { font-family:"Segoe UI"; background:#f0f2f5; margin:0; padding:0; min-height:100vh; display:flex; align-items:center; justify-content:center; }
     .container { background: rgba(255,255,255,0.95); padding:30px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); width:95%; max-width:500px; text-align:center; }
@@ -15,6 +15,7 @@
     button:hover { transform: scale(1.05); background: linear-gradient(135deg,#ff9a00,#ff6ec7); }
     .back-btn { background:#111; margin-top:20px; }
     .back-btn:hover { background:#ff6ec7; }
+    .success-message { font-weight:600; margin-top:15px; border-radius:10px; padding:12px; color:white; background:blue; }
   </style>
 </head>
 <body>
@@ -32,48 +33,63 @@
     <button onclick="submitPayment()">✅ Submit</button>
     <br>
     <button class="back-btn" onclick="window.location.href='dashboard.html'">⬅ Back</button>
+
+    <!-- Success message এখানে dynamically add হবে -->
+    <div id="messageContainer"></div>
   </div>
 
 <script type="module">
-import { auth, db, storage } from './firebase.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
-import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+  import { auth, db, storage } from './firebase.js';
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+  import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+  import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
 
-let currentUser = null;
-onAuthStateChanged(auth, (user) => {
-  if(user) currentUser = user;
-  else window.location.href = "login.html";
-});
+  let currentUser = null;
+  onAuthStateChanged(auth, (user) => {
+    if(user) currentUser = user;
+    else window.location.href = "login.html";
+  });
 
-window.submitPayment = async function(){
-  const fileInput = document.getElementById("screenshot");
-  if(!fileInput.files[0]) return alert("❌ স্ক্রিনশট আপলোড করুন");
-  if(!currentUser) return alert("Please login first");
+  window.submitPayment = async function(){
+    const fileInput = document.getElementById("screenshot");
+    if(!fileInput.files[0]) return alert("❌ স্ক্রিনশট আপলোড করুন");
+    if(!currentUser) return alert("Please login first");
 
-  try {
-    const fileRef = ref(storage, `payments/${currentUser.uid}/${Date.now()}.jpg`);
-    await uploadBytes(fileRef, fileInput.files[0]);
-    const fileURL = await getDownloadURL(fileRef);
+    try {
+      // Upload screenshot to Firebase Storage
+      const fileRef = ref(storage, `payments/${currentUser.uid}/${Date.now()}.jpg`);
+      await uploadBytes(fileRef, fileInput.files[0]);
+      const fileURL = await getDownloadURL(fileRef);
 
-    await addDoc(collection(db, "paymentRequests"), {
-      uid: currentUser.uid,
-      plan: "Plan 3 - 3000 টাকা",
-      amount: 3000,
-      dailyProfit: 150,
-      totalProfit: 0,
-      lastProfitUpdate: new Date().toDateString(),
-      screenshot: fileURL,
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
+      // Add payment request to Firestore
+      await addDoc(collection(db, "paymentRequests"), {
+        uid: currentUser.uid,
+        plan: "Oil Plan 3 - 3000 টাকা",
+        amount: 3000,
+        dailyProfit: 150,
+        totalProfit: 0,
+        lastProfitUpdate: new Date().toDateString(),
+        screenshot: fileURL,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
 
-    alert("✅ পেমেন্ট রিকোয়েস্ট পাঠানো হয়েছে। এডমিন অ্যাপ্রুভ করলে প্ল্যান অ্যাক্টিভ হবে।");
-    window.location.href = "dashboard.html";
-  } catch(e){
-    alert("❌ Error: " + e.message);
+      // Success message
+      const messageDiv = document.createElement("div");
+      messageDiv.className = "success-message";
+      messageDiv.innerText = "✅ Success! আপনার প্যাকেজটি কিছুক্ষণের ভিতরে অ্যাড হয়ে যাবে।";
+      document.getElementById("messageContainer").appendChild(messageDiv);
+
+      // 20 সেকেন্ড পরে remove
+      setTimeout(() => messageDiv.remove(), 20000);
+
+      // Optional: redirect after 3-5 sec
+      // setTimeout(() => window.location.href = "dashboard.html", 5000);
+
+    } catch(e){
+      alert("❌ Error: " + e.message);
+    }
   }
-}
 </script>
 </body>
 </html>
