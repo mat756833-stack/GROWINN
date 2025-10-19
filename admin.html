@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
@@ -31,7 +31,7 @@ button { padding:5px 12px; margin:3px; border:none; border-radius:8px; cursor:po
 <script type="module">
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { collection, doc, updateDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { collection, getDocs, query, where, updateDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 const adminContent = document.getElementById("adminContent");
 
@@ -41,62 +41,70 @@ function logout(){
 }
 
 // Update payment status
-window.updateStatus = async function(docId, status){
+async function updateStatus(docId, status){
   try{
     const docRef = doc(db, "paymentRequests", docId);
     await updateDoc(docRef, { status: status });
     alert(`✅ Status updated to ${status}`);
+    loadPaymentRequests(); // refresh
   } catch(e){
     alert("❌ Error: " + e.message);
   }
 }
 
-// Load payment requests realtime
-function loadPaymentRequestsRealtime(){
+// Load payment requests (live flow)
+async function loadPaymentRequests(){
+  adminContent.innerHTML = "Loading...";
   const qPayments = collection(db, "paymentRequests");
-  onSnapshot(qPayments, (snapshot) => {
-    adminContent.innerHTML = "";
-    if(snapshot.empty){
-      adminContent.innerHTML = "<p>কোনো payment request নেই।</p>";
-      return;
-    }
+  const snapPayments = await getDocs(qPayments);
 
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      adminContent.innerHTML += `
-        <div class="card">
-          <b>${data.plan}</b><br>
-          UID: ${data.uid}<br>
-          Amount: ${data.amount} ৳<br>
-          Status: <b>${data.status}</b><br>
-          Screenshot: ${data.screenshot ? `<a href="${data.screenshot}" target="_blank">View</a>` : "No screenshot"}<br>
-          <button class="approve" onclick="updateStatus('${id}','approved')">Approve</button>
-          <button class="reject" onclick="updateStatus('${id}','rejected')">Reject</button>
-        </div>
-      `;
-    });
+  if(snapPayments.empty){
+    adminContent.innerHTML = "<p>কোনো payment request নেই।</p>";
+    return;
+  }
+
+  adminContent.innerHTML = "";
+  snapPayments.forEach(docSnap => {
+    const data = docSnap.data();
+    const id = docSnap.id;
+
+    adminContent.innerHTML += `
+      <div class="card">
+        <b>${data.plan}</b><br>
+        UID: ${data.uid}<br>
+        Amount: ${data.amount} ৳<br>
+        Status: <b>${data.status}</b><br>
+        Screenshot: ${data.screenshot ? `<a href="${data.screenshot}" target="_blank">View</a>` : "No screenshot"}<br>
+        <button class="approve" onclick="updateStatus('${id}','approved')">Approve</button>
+        <button class="reject" onclick="updateStatus('${id}','rejected')">Reject</button>
+      </div>
+    `;
   });
 }
 
-// Admin verification using Firestore collection
+// Admin verification (field-based, working with current database)
 onAuthStateChanged(auth, async (user) => {
   if(!user) return window.location.href="login.html";
 
   try{
-    const adminDoc = await getDoc(doc(db, "admins", user.uid));
-    if(!adminDoc.exists()){
+    const qAdmin = query(collection(db, "admins"), where("uid", "==", user.uid));
+    const snapAdmin = await getDocs(qAdmin);
+
+    if(snapAdmin.empty){
       alert("Unauthorized — আপনি অ্যাডমিন নন");
       return window.location.href="dashboard.html";
     }
 
-    // Admin confirmed → Load requests realtime
-    loadPaymentRequestsRealtime();
+    // Admin confirmed → Load payment requests
+    loadPaymentRequests();
+
   } catch(e){
     alert("❌ Error checking admin: " + e.message);
-    return window.location.href="dashboard.html";
+    return window.location.href = "dashboard.html";
   }
 });
 </script>
+
 </body>
 </html>
+  
