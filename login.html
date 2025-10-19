@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login</title>
-
 <style>
 body { font-family:"Segoe UI"; display:flex; justify-content:center; align-items:center; height:100vh; background:#6ec6ff; margin:0; }
 .form-box { background: rgba(0,0,0,0.6); padding:30px; border-radius:15px; text-align:center; color:white; }
@@ -17,37 +16,49 @@ a { display:block; color:white; margin-top:15px; text-decoration:none; }
 <body>
 
 <div class="form-box">
-  <h2>লগইন</h2>
-  <input type="email" id="email" placeholder="ইমেইল" required><br>
-  <input type="password" id="password" placeholder="পাসওয়ার্ড" required><br>
-  <button onclick="login()">লগইন করুন</button>
-  <a href="register.html">একাউন্ট নেই? রেজিস্ট্রেশন করুন</a>
-  <p id="msg"></p>
+  <h2>লগইন</h2>
+  <input type="email" id="email" placeholder="ইমেইল" required><br>
+  <input type="password" id="password" placeholder="পাসওয়ার্ড" required><br>
+  <button onclick="login()">লগইন করুন</button>
+  <a href="register.html">একাউন্ট নেই? রেজিস্ট্রেশন করুন</a>
+  <p id="msg"></p>
 </div>
 
 <script type="module">
-  // Firebase Config import
-  import { auth } from './firebase.js';
-  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { auth, db } from './firebase.js';
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-  window.login = async function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const msg = document.getElementById("msg");
+window.login = async function() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("msg");
 
-    if(!email || !password){
-      msg.innerText = "সব ফিল্ড পূরণ করুন";
-      return;
-    }
+  if(!email || !password){
+    msg.innerText = "সব ফিল্ড পূরণ করুন";
+    return;
+  }
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Login successful → Redirect to dashboard
-      window.location.href = "dashboard.html";
-    } catch (e) {
-      msg.innerText = "❌ " + e.message;
-    }
-  }
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Admin check by UID
+    const q = query(collection(db, "admins"), where("uid", "==", user.uid));
+    const snap = await getDocs(q);
+
+    if(!snap.empty){
+      localStorage.setItem("isAdmin","true");
+      window.location.href = "admin.html";
+    } else {
+      localStorage.removeItem("isAdmin");
+      window.location.href = "dashboard.html";
+    }
+
+  } catch (e) {
+    msg.innerText = "❌ " + e.message;
+  }
+}
 </script>
 
 </body>
