@@ -30,7 +30,9 @@ onAuthStateChanged(auth, (user)=>{
   onSnapshot(q, async (snapshot)=>{
     packageBox.innerHTML = "";
     if(snapshot.empty){
-      packageBox.innerHTML = "❌ এখনো কোনো package নেই।";
+      packageBox.innerHTML = "❌ আপনার কোনো active package নেই 
+        
+              প্যাকেজ ক্রয় করুন ।";
       return;
     }
 
