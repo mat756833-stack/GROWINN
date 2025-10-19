@@ -3,19 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oil Plan 3 - 3000 টাকা</title>
+  <title>Plan 3 - 3000 টাকা</title>
   <style>
-    body { font-family:"Segoe UI"; background:#f0f2f5; margin:0; padding:0; min-height:100vh; display:flex; align-items:center; justify-content:center; }
-    .container { background: rgba(255,255,255,0.95); padding:30px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); width:95%; max-width:500px; text-align:center; }
-    h2 { margin-bottom:15px; color:#222; }
-    p { color:#444; font-size:16px; }
-    .number-box { background:#111; color:white; padding:12px; border-radius:10px; margin:15px 0; font-weight:600; }
-    input[type="file"] { margin:15px 0; padding:10px; border:2px dashed #6a11cb; border-radius:10px; width:100%; cursor:pointer; background:#fafafa; }
-    button { padding:12px 25px; border:none; border-radius:10px; background:linear-gradient(135deg,#6a11cb,#ff6ec7); color:white; font-size:16px; cursor:pointer; transition:0.3s; margin-top:10px; }
-    button:hover { transform: scale(1.05); background: linear-gradient(135deg,#ff9a00,#ff6ec7); }
-    .back-btn { background:#111; margin-top:20px; }
-    .back-btn:hover { background:#ff6ec7; }
-    .success-message { font-weight:600; margin-top:15px; border-radius:10px; padding:12px; color:white; background:blue; }
+    body {
+      font-family: "Segoe UI";
+      background: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      width: 95%;
+      max-width: 500px;
+      text-align: center;
+    }
+    h2 { margin-bottom: 15px; color: #222; }
+    p { color: #444; font-size: 16px; }
+    .number-box {
+      background: #111;
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-weight: 600;
+    }
+    input[type="file"] {
+      margin: 15px 0;
+      padding: 10px;
+      border: 2px dashed #6a11cb;
+      border-radius: 10px;
+      width: 100%;
+      cursor: pointer;
+      background: #fafafa;
+    }
+    button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #6a11cb, #ff6ec7);
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 10px;
+    }
+    button:hover { transform: scale(1.05); background: linear-gradient(135deg, #ff9a00, #ff6ec7); }
+    .back-btn { background: #111; margin-top: 20px; }
+    .back-btn:hover { background: #ff6ec7; }
+    .success-message {
+      font-weight: 600;
+      margin-top: 15px;
+      border-radius: 10px;
+      padding: 12px;
+      color: white;
+      background: linear-gradient(135deg, #00c851, #007e33);
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
@@ -30,11 +81,10 @@
     <p>💳 টাকা পাঠানোর পর স্ক্রিনশট আপলোড করুন</p>
     <input type="file" id="screenshot">
 
-    <button onclick="submitPayment()">✅ Submit</button>
+    <button id="submitBtn" onclick="submitPayment()">✅ Submit</button>
     <br>
-    <button class="back-btn" onclick="window.location.href='dashboard.html'">⬅ Back</button>
+    <button class="back-btn" onclick="window.history.back()">⬅ Back</button>
 
-    <!-- Success message এখানে dynamically add হবে -->
     <div id="messageContainer"></div>
   </div>
 
@@ -42,31 +92,63 @@
   import { auth, db, storage } from './firebase.js';
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
   import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
-  import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+  import { ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
 
   let currentUser = null;
+  const submitBtn = document.getElementById("submitBtn");
+  const messageDiv = document.getElementById("messageContainer");
+  let isSubmitted = false; // ✅ Prevent back until submit
+
+  // 🔹 Prevent leaving page before submit
+  window.addEventListener("beforeunload", (e) => {
+    if (!isSubmitted) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  // 🔹 User login check
   onAuthStateChanged(auth, (user) => {
-    if(user) currentUser = user;
+    if (user) currentUser = user;
     else window.location.href = "login.html";
   });
 
-  window.submitPayment = async function(){
+  // 🔹 Submit function
+  window.submitPayment = async function() {
     const fileInput = document.getElementById("screenshot");
-    if(!fileInput.files[0]) return alert("❌ স্ক্রিনশট আপলোড করুন");
-    if(!currentUser) return alert("Please login first");
+    messageDiv.innerHTML = "";
+
+    if (!fileInput.files[0]) { alert("❌ স্ক্রিনশট আপলোড করুন"); return; }
+    if (!currentUser) { alert("⚠️ আগে লগইন করুন"); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = "⏳ Uploading... 0%";
 
     try {
-      // Upload screenshot to Firebase Storage
+      // 🔹 Upload with progress
       const fileRef = ref(storage, `payments/${currentUser.uid}/${Date.now()}.jpg`);
-      await uploadBytes(fileRef, fileInput.files[0]);
+      const uploadTask = uploadBytesResumable(fileRef, fileInput.files[0]);
+
+      await new Promise((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = Math.floor((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            submitBtn.innerText = `📤 Uploading... ${progress}%`;
+          },
+          (error) => reject(error),
+          () => resolve()
+        );
+      });
+
       const fileURL = await getDownloadURL(fileRef);
 
-      // Add payment request to Firestore
+      // 🔹 Firestore save
       await addDoc(collection(db, "paymentRequests"), {
         uid: currentUser.uid,
-        plan: "Oil Plan 3 - 3000 টাকা",
+        plan: "Plan 3 - 3000 টাকা",
         amount: 3000,
-        dailyProfit: 150,
+        dailyProfit: 225,
         totalProfit: 0,
         lastProfitUpdate: new Date().toDateString(),
         screenshot: fileURL,
@@ -74,22 +156,27 @@
         createdAt: serverTimestamp()
       });
 
-      // Success message
-      const messageDiv = document.createElement("div");
-      messageDiv.className = "success-message";
-      messageDiv.innerText = "✅ Success! আপনার প্যাকেজটি কিছুক্ষণের ভিতরে অ্যাড হয়ে যাবে।";
-      document.getElementById("messageContainer").appendChild(messageDiv);
+      // 🔹 Success message
+      isSubmitted = true; // ✅ Now allow back
+      const msg = document.createElement("div");
+      msg.className = "success-message";
+      msg.innerText = "✅ সফল! আপনার রিকোয়েস্ট পাঠানো হয়েছে।";
+      messageDiv.appendChild(msg);
 
-      // 20 সেকেন্ড পরে remove
-      setTimeout(() => messageDiv.remove(), 20000);
+      fileInput.value = "";
+      submitBtn.innerText = "✅ Submit";
 
-      // Optional: redirect after 3-5 sec
-      // setTimeout(() => window.location.href = "dashboard.html", 5000);
+      // 🔹 Redirect after success
+      setTimeout(() => { msg.innerText = "🔁 Redirecting..."; }, 2000);
+      setTimeout(() => { window.history.back(); }, 4000);
 
-    } catch(e){
+    } catch (e) {
       alert("❌ Error: " + e.message);
+      submitBtn.disabled = false;
+      submitBtn.innerText = "✅ Submit";
+      isSubmitted = false; // Submit failed → prevent back again
     }
-  }
+  };
 </script>
 </body>
 </html>
