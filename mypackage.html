@@ -7,32 +7,43 @@
   <style>
     body{font-family:"Segoe UI";background:#f9f9f9;padding:20px;}
     .box{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+    .pending{background:#e0f0ff; color:#111; font-weight:600;}
+    .rejected{background:#ffe0e0; color:#111; font-weight:600;}
   </style>
 </head>
 <body>
   <h2>📦 My Package</h2>
   <div id="packageBox">Loading...</div>
 
-  <script type="module">
-    import { auth, db } from './firebase.js';
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-    import { collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+<script type="module">
+import { auth, db } from './firebase.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-    const packageBox = document.getElementById("packageBox");
+const packageBox = document.getElementById("packageBox");
 
-    onAuthStateChanged(auth, async (user)=>{
-      if(!user){ window.location.href="login.html"; return; }
+onAuthStateChanged(auth, (user)=>{
+  if(!user){ window.location.href="login.html"; return; }
 
-      const q = query(collection(db, "paymentRequests"), where("uid","==",user.uid), where("status","==","approved"));
-      const snap = await getDocs(q);
+  const q = query(collection(db, "paymentRequests"), where("uid","==",user.uid));
 
-      if(snap.empty){ packageBox.innerHTML = "❌ এখনো কোনো active package নেই।"; return; }
+  onSnapshot(q, async (snapshot)=>{
+    packageBox.innerHTML = "";
+    if(snapshot.empty){
+      packageBox.innerHTML = "❌ এখনো কোনো package নেই।";
+      return;
+    }
 
-      packageBox.innerHTML = "";
-      snap.forEach(async (d)=>{
-        const data = d.data();
+    snapshot.forEach(async (d)=>{
+      const data = d.data();
+      let boxClass = "box";
+      let statusHTML = "";
+
+      if(data.status === "pending"){
+        boxClass += " pending";
+        statusHTML = "⏳ Processing... আপনার প্যাকেজ কিছুক্ষণের মধ্যে অ্যাড হবে";
+      } else if(data.status === "approved"){
         const today = new Date().toDateString();
-
         if(data.lastProfitUpdate !== today){
           const newTotal = (data.totalProfit || 0) + (data.dailyProfit || 0);
           await updateDoc(doc(db,"paymentRequests",d.id),{
@@ -42,17 +53,25 @@
           data.totalProfit = newTotal;
           data.lastProfitUpdate = today;
         }
-
-        packageBox.innerHTML += `
-          <div class="box">
-            <b>${data.plan}</b><br>
-            📅 সর্বশেষ আপডেট: ${data.lastProfitUpdate}<br>
-            💰 দৈনিক প্রফিট: ${data.dailyProfit} ৳<br>
-            🧮 মোট প্রফিট: ${data.totalProfit} ৳
-          </div>
+        statusHTML = `
+          📅 সর্বশেষ আপডেট: ${data.lastProfitUpdate}<br>
+          💰 দৈনিক প্রফিট: ${data.dailyProfit} ৳<br>
+          🧮 মোট প্রফিট: ${data.totalProfit} ৳
         `;
-      });
+      } else if(data.status === "rejected"){
+        boxClass += " rejected";
+        statusHTML = "❌ Rejected / Pending";
+      }
+
+      packageBox.innerHTML += `
+        <div class="${boxClass}">
+          <b>${data.plan}</b><br>
+          ${statusHTML}
+        </div>
+      `;
     });
-  </script>
+  });
+});
+</script>
 </body>
 </html>
