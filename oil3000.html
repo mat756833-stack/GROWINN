@@ -81,7 +81,7 @@
     <p>💳 টাকা পাঠানোর পর স্ক্রিনশট আপলোড করুন</p>
     <input type="file" id="screenshot">
 
-    <button id="submitBtn" onclick="submitPayment()">✅ Submit</button>
+    <button id="submitBtn">✅ Submit</button>
     <br>
     <button class="back-btn" onclick="window.history.back()">⬅ Back</button>
 
@@ -97,55 +97,52 @@
   let currentUser = null;
   const submitBtn = document.getElementById("submitBtn");
   const messageDiv = document.getElementById("messageContainer");
-  let isSubmitted = false; // ✅ Prevent back until submit
+  let isSubmitted = false;
 
-  // 🔹 Prevent leaving page before submit
-  window.addEventListener("beforeunload", (e) => {
-    if (!isSubmitted) {
-      e.preventDefault();
-      e.returnValue = "";
+  // 🔹 Detect login
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      currentUser = user;
+      console.log("✅ Logged in:", user.uid);
+    } else {
+      alert("⚠️ আগে লগইন করুন");
+      window.location.href = "login.html";
     }
   });
 
-  // 🔹 User login check
-  onAuthStateChanged(auth, (user) => {
-    if (user) currentUser = user;
-    else window.location.href = "login.html";
-  });
+  // 🔹 Submit Button Click
+  submitBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      alert("⚠️ আগে লগইন করুন");
+      return;
+    }
 
-  // 🔹 Submit function
-  window.submitPayment = async function() {
     const fileInput = document.getElementById("screenshot");
-    messageDiv.innerHTML = "";
-
-    if (!fileInput.files[0]) { alert("❌ স্ক্রিনশট আপলোড করুন"); return; }
-    if (!currentUser) { alert("⚠️ আগে লগইন করুন"); return; }
+    if (!fileInput.files[0]) return alert("❌ স্ক্রিনশট আপলোড করুন");
 
     submitBtn.disabled = true;
-    submitBtn.innerText = "⏳ Uploading... 0%";
+    submitBtn.innerText = "⏳ Uploading...";
 
     try {
-      // 🔹 Upload with progress
+      // Upload Screenshot
       const fileRef = ref(storage, `payments/${currentUser.uid}/${Date.now()}.jpg`);
       const uploadTask = uploadBytesResumable(fileRef, fileInput.files[0]);
 
+      uploadTask.on("state_changed", (snapshot) => {
+        const progress = Math.floor((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        submitBtn.innerText = `📤 Uploading... ${progress}%`;
+      });
+
       await new Promise((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress = Math.floor((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            submitBtn.innerText = `📤 Uploading... ${progress}%`;
-          },
-          (error) => reject(error),
-          () => resolve()
-        );
+        uploadTask.on("state_changed", null, reject, resolve);
       });
 
       const fileURL = await getDownloadURL(fileRef);
 
-      // 🔹 Firestore save
+      // Save to Firestore
       await addDoc(collection(db, "paymentRequests"), {
         uid: currentUser.uid,
+        email: currentUser.email,
         plan: "Plan 3 - 3000 টাকা",
         amount: 3000,
         dailyProfit: 225,
@@ -156,8 +153,8 @@
         createdAt: serverTimestamp()
       });
 
-      // 🔹 Success message
-      isSubmitted = true; // ✅ Now allow back
+      // Success Message
+      isSubmitted = true;
       const msg = document.createElement("div");
       msg.className = "success-message";
       msg.innerText = "✅ সফল! আপনার রিকোয়েস্ট পাঠানো হয়েছে।";
@@ -166,17 +163,16 @@
       fileInput.value = "";
       submitBtn.innerText = "✅ Submit";
 
-      // 🔹 Redirect after success
       setTimeout(() => { msg.innerText = "🔁 Redirecting..."; }, 2000);
-      setTimeout(() => { window.history.back(); }, 4000);
+      setTimeout(() => { window.location.href = "dashboard.html"; }, 4000);
 
-    } catch (e) {
-      alert("❌ Error: " + e.message);
+    } catch (error) {
+      alert("❌ Error: " + error.message);
       submitBtn.disabled = false;
       submitBtn.innerText = "✅ Submit";
-      isSubmitted = false; // Submit failed → prevent back again
+      isSubmitted = false;
     }
-  };
+  });
 </script>
 </body>
-</html>
+  </html>              
